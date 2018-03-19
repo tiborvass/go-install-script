@@ -1,0 +1,74 @@
+:; if false; then
+	goto :WINDOWS
+fi
+
+:;# UNIX_SH
+_(){
+	set -e
+
+	version=1.10
+	os="$(uname -s | tr '[[:upper:]]' '[[:lower:]]')"
+
+	arch="$(uname -m)"
+	case "$arch" in
+	x86_64)
+		arch=amd64
+		;;
+	x86)
+		arch=386
+		;;
+	*)
+		>&2 echo "Unsupported architecture $arch"
+		exit 1
+		;;
+	esac
+
+	url="https://dl.google.com/go/go${version}.${os}-${arch}"
+
+	case "$os" in
+	darwin)
+		url="${url}.pkg"
+		echo "$url"
+		;;
+	windows)
+		url="${url}.msi"
+		echo "$url"
+		;;
+	*)
+		url="${url}.tar.gz"
+		TMPDIR="${TMPDIR:-/tmp}"
+		[ ! -d "$TMPDIR" ] && mkdir -p "$TMPDIR"
+		dir="$(mktemp -d $TMPDIR/golang.XXXXXX)"
+		file=$(basename "$url")
+		curl -fsSL -o "$dir/$file" "$url"
+		tar xzf "$dir/$file" -C "$dir"
+		installed=$(which go || true)
+		if [ -d /usr/local/go ]; then
+			mv /usr/local/go "$dir/go.bak"
+		fi
+		if [ -z "$installed" ]; then
+			if [ ! -f /etc/profile.d/golang.sh ]; then
+				echo 'export PATH=/usr/local/go/bin:$PATH' > /etc/profile.d/golang.sh && . /etc/profile.d/golang.sh
+			fi
+		fi
+		mv "$dir/go" /usr/local/go
+		which go > /dev/null 2>&1
+		rm -rf "$dir"
+		echo . /etc/profile.d/golang.sh
+		;;
+	esac
+
+	exit
+}
+_
+:;# !UNIX_SH
+
+
+
+:;# WINDOWS_CMD
+
+	:WINDOWS
+	echo hello cmd
+	exit /b
+
+:;# !WINDOWS_CMD
